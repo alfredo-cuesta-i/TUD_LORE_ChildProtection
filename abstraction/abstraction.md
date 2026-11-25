@@ -7,22 +7,38 @@
 The framework is a parameterizable, partially observable synthetic ecosystem for comparing policies under identical controlled conditions. It is not a digital twin and does not claim to reproduce or predict real-world behavior.
 
 ```mermaid
-flowchart LR
-    S[Scenario] -->|initializes| E[Entities]
-    E -->|generate| A[Actions]
-    P[Policy] -->|selects| A
-    A -->|commit as| EV[Events]
-    EV -->|trigger| ST[Situations]
-    EV -->|resolve through| V[Visibility]
-    ST -->|resolve through| V
-    V -->|produce| O[Observations]
-    O -->|motivate| I[Interventions]
-    I -->|generate| EV
-    ST --> H[(World state\nand history)]
-    EV --> H
-    O --> H
-    I --> H
-    H -->|extract| OUT[Outcomes]
+flowchart TD
+    Scenario -->|initializes| WorldState[World state]
+    WorldState --> Entity[Entities]
+    WorldState --> Situation[Initial situations]
+    Entity -->|proposes| Action
+    Policy -->|guides or selects| Action
+    Action -->|validated by authority and constraints| Engine
+    Engine -->|commits valid actions as| Event
+
+    Event -->|may trigger| Transition
+    Situation[Active situations] -->|evaluated with event| Transition
+    Transition -->|activates, changes, or ends| Situation
+
+    Event -->|evaluated under| Visibility
+    Situation -->|may also be evaluated under| Visibility
+    Intervention -->|may also be evaluated under| Visibility
+    Visibility -->|may produce zero or more| Observation
+    Observation -->|held by a particular| Observer[Observer]
+    Observer -->|reasons from available information| Reasoning[Agent reasoning]
+    Reasoning -->|may propose| Action
+    Reasoning -->|may select| Intervention
+    Entity -->|may initiate| Intervention
+    Intervention -->|validated and applied by| Engine
+    Engine -->|may cause further| Event
+
+    Event -->|recorded in| Trace
+    Situation -->|changes recorded in| Trace
+    Observation -->|recorded in| Trace
+    Intervention -->|recorded in| Trace
+    Trace -->|checked against| Stopping[Stopping conditions]
+    Stopping -->|when reached, enables extraction| Outcome
+    Trace -->|source for| Outcome
 ```
 
 ### Essential concepts
@@ -40,14 +56,16 @@ flowchart LR
 | World state | The explicit snapshot of entities, situations, relationships, observations, restrictions, and history. | Reconstructed from the initial state and immutable trace. |
 | Outcome | A fact extracted after termination. | Derived from the final world state and complete trace. |
 
-### Execution in twelve steps
+### Event-centered execution
 
 ```text
-Scenario -> Instantiate entities -> Activate initial situations
--> Actor evaluation -> Candidate actions -> Validated events
--> Situation transitions -> Visibility resolution -> Observations
--> Intervention selection -> State consolidation -> Outcomes
+Scenario -> Initial world state -> Actor-specific reasoning -> Candidate actions
+-> Validated events -> {situation transitions; zero or more observations; trace record}
+-> Actor-specific reasoning -> {new actions; interventions} -> further events
+-> stopping condition -> outcomes derived from the trace
 ```
+
+The branches from an event are related but not a single serial pipeline. One event may change a situation, generate observations for multiple actors, do both, or generate no observations. Each actor reasons only from information available to that actor. The trace records the execution as it unfolds; outcomes are derived from that history when the run stops.
 
 ### Separation of responsibilities
 
@@ -300,15 +318,17 @@ The domain ontology should define intervention options, while policy configurati
 
 ### 4.7 Information and observation space
 
-Partial observability is a first-class property. The process is:
+Partial observability is a first-class property. For each eligible source artefact, the process is:
 
 1. A world artefact exists: event, situation, observation, or intervention.
 2. Visibility rules identify candidate observers.
 3. Mandatory, conditional, and forbidden visibility categories are resolved.
-4. An observation is created for each eligible observer.
+4. Zero or more observations are created, one for each eligible observer.
 5. The observation records its source and visibility basis.
 
 Observations belong to actors. Other actors may not automatically inherit them; propagation requires an explicit reporting, escalation, referral, or sharing event.
+
+An event can independently affect situation state, produce observations for different actors, and be recorded in the trace. None of these effects guarantees the others: an event can produce no observation, and its situation effect does not imply that an actor observed it.
 
 A visibility rule may be:
 
@@ -356,25 +376,21 @@ An outcome is an extraction produced after termination. It should be a report of
 
 ## 5. Execution semantics
 
-The reusable execution cycle is:
+The reusable execution cycle is event-centered rather than a fixed linear pipeline:
 
 ```text
-1. Load scenario and instantiate entities.
-2. Activate initial situations.
-3. Evaluate each actor using only locally available information.
-4. Generate candidate actions according to entity configuration and policy.
-5. Construct ontology-compliant event candidates.
-6. Validate authority, visibility, scenario constraints, relationships, and termination.
-7. Commit valid events and append them to history.
-8. Evaluate situation transitions.
-9. Resolve visibility and generate observations.
-10. Select, validate, and apply interventions.
-11. Consolidate restrictions and active effects.
-12. Record the world state and continue or terminate.
-13. Extract outcomes from the final state and history.
+1. Load the scenario, instantiate entities, and activate initial situations.
+2. Evaluate each actor using only that actor's available information.
+3. Generate and validate candidate actions under the policy, authority, and scenario constraints.
+4. Commit valid actions as events and append them to the trace.
+5. From each committed event, independently evaluate situation transitions and resolve visibility; record each resulting change or observation.
+6. Let each actor reason from its own observations and other information explicitly available to it; actors may propose new actions or interventions.
+7. Validate and apply interventions; record them and any resulting events or state effects.
+8. Consolidate the world state, check stopping conditions, and repeat from actor evaluation if the run continues.
+9. Derive outcomes from the final state and complete trace after termination.
 ```
 
-The cycle need not be strictly synchronous. It may support parallel agents or actor-specific scheduling. Any scheduling rule must be explicit and reproducible.
+An event may yield a situation change, multiple actor-specific observations, both, or neither. The cycle need not be strictly synchronous and may support parallel agents or actor-specific scheduling. Any scheduling rule must be explicit and reproducible.
 
 ### Authority
 

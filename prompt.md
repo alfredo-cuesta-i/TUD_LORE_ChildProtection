@@ -24,3 +24,21 @@ I've read `abstraction.md` and It seems ok to me. However, I find it very large.
 # 3
 
 Let's say that I give you `abstraction.md` and ask to build a project about children on-line protection. I want to see how would you make it in a new .md. How the abstraction comes to live. I have all the .md but yoy can just ignore them. How would you proceed?
+
+--- 
+
+# 4  
+
+I am writting an overleaf document about it. 
+Reading `abstration.md` I find some questions I'd like to discuss. 
+Open `abstraction.md` and the rest of markdown files in the `knowledge base` folder and get ready for my questions.
+
+1. in `abstration.md` you talk about entities, actors and policies. I think that entities and actors are similar, unless actor is used for human entities. 
+Similarly, if both actors and policies produce  actions, can I assume that policies are also entities?
+can you clarify?. 
+
+2. "Artifacts" is mentioned in different contexts. Can you clarify? 
+3. Interventions are actions. What is the difference?
+
+I am trying to connect these concepts in a graph:
+entities, events, situations, transitions, observations, interventions,   outcomes, authority, visibility, stopping, scenarios, policies, engine, traces
